@@ -1,0 +1,11 @@
+{
+  "name": "sales-tracker-server",
+  "version": "1.0.0",
+  "description": "Server for the sales tracker app.",
+  "main": "sales_tracker.html",
+  "scripts": {
+    "start": "http-server -p 8080"
+  },
+  "author": "",
+  "license": "ISC"
+}
