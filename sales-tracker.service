@@ -1,0 +1,19 @@
+[Unit]
+Description=Sales Tracker HTTP Server
+After=network.target
+
+[Service]
+# IMPORTANT: Replace 'your_username' with your actual Ubuntu username
+User=your_username
+Group=your_username
+
+# IMPORTANT: Replace this path with the full path to your app's directory
+WorkingDirectory=/home/your_username/Documents/SalesTracker
+
+# This command runs the "start" script from your package.json
+ExecStart=/usr/bin/npm start
+
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
