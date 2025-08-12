@@ -1,0 +1,203 @@
+Complete Guide: Podman Deployment on macOS + Ubuntu VM
+This guide provides a comprehensive, step-by-step walkthrough for deploying the Sales & KPI Tracker application. The architecture involves running a local web server inside a Podman container within an Ubuntu virtual machine on a macOS host, with all data stored securely in your own Google Firebase project.
+
+Part 1: Setting Up the Firebase Backend
+This section covers the creation of the cloud backend that will store your data. If you have already completed this, you can skip to Part 2.
+
+1.1 Create Your Firebase Project
+Navigate to the Firebase Console and sign in.
+
+Click "Add project", give it a name (e.g., "My Sales Tracker"), and click Continue.
+
+You can disable Google Analytics for this project. Click "Create project".
+
+1.2 Enable Google Authentication
+In your Firebase project, go to the Build > Authentication section.
+
+Click "Get started" and select Google from the providers list.
+
+Enable the provider, select a Project support email, and click Save.
+
+1.3 Create the Cloud Firestore Database
+Go to Build > Firestore Database and click "Create database".
+
+Start in Production mode for security. Click Next.
+
+Choose a location and click Enable.
+
+1.4 Set Firestore Security Rules
+In the Firestore Database section, click the Rules tab.
+
+Replace the default rules with the following:
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow users to read and write only their own documents in their own collections
+    match /users/{userId}/{collection}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+
+Click the Publish button to save the rules.
+
+Part 2: Configuring the Ubuntu VM for Podman
+Prepare your Ubuntu virtual machine to build and run containers.
+
+2.1 Install Podman
+Start your Ubuntu VM and open a terminal.
+
+Update your package manager:
+
+sudo apt update
+
+Install Podman:
+
+sudo apt install podman -y
+
+Part 3: Setting Up the Project Files
+Create the necessary files for your application and container inside the Ubuntu VM.
+
+3.1 Create the Project Directory
+Create a folder for your project.
+
+mkdir -p ~/Documents/SalesTracker
+
+Navigate into that new directory:
+
+cd ~/Documents/SalesTracker
+
+3.2 Create Project Files
+Application File (tracker.html):
+
+Run nano tracker.html.
+
+Copy the entire HTML code for the "Sales & KPI Tracker (Complete)" from the Canvas and paste it into the editor.
+
+Save and exit (Ctrl+X, Y, Enter).
+
+Node.js Project File (package.json):
+
+Run nano package.json.
+
+Paste the following content. This tells Node.js about your project and its dependency.
+
+{
+  "name": "sales-tracker-server",
+  "version": "1.0.0",
+  "description": "Server for the sales tracker app.",
+  "dependencies": {
+    "http-server": "^14.1.1"
+  },
+  "scripts": {
+    "start": "http-server -p 8080"
+  }
+}
+
+Save and exit.
+
+Container Recipe (Dockerfile):
+
+Run nano Dockerfile.
+
+Paste the following instructions. This tells Podman how to build your container image.
+
+# Use an official Node.js runtime as a parent image
+FROM node:18-slim
+
+# Set the working directory in the container
+WORKDIR /usr/src/app
+
+# Copy the package.json file and install dependencies
+COPY package*.json ./
+RUN npm install
+
+# Copy the rest of the application files
+COPY . .
+
+# Make port 8080 available to the world outside this container
+EXPOSE 8080
+
+# Define the command to run the app
+CMD [ "npm", "start" ]
+
+Save and exit.
+
+Part 4: Configuring VirtualBox Networking
+This step creates a "tunnel" from your Mac to your Ubuntu VM, allowing your Mac's browser to access the server running inside the VM. This replaces the need to publish container ports to the host IP.
+
+Completely shut down your Ubuntu VM.
+
+In VirtualBox, select the VM and go to Settings > Network.
+
+Ensure the adapter is Enabled and Attached to: NAT.
+
+Expand the Advanced section and click Port Forwarding.
+
+Add a new rule with the following settings:
+
+Name: http (or any name)
+
+Protocol: TCP
+
+Host Port: 8080 (The port you will use on your Mac)
+
+Guest Port: 8080 (The port the container will use inside the VM)
+
+Click OK to save the rule and OK again to close settings.
+
+Part 5: Building and Running the Container
+Now, you will build the container image and run it.
+
+5.1 Build the Container Image
+Start your Ubuntu VM and open a terminal.
+
+Navigate to your project directory (~/Documents/SalesTracker).
+
+Run the build command. This creates a reusable image named sales-tracker.
+
+podman build -t sales-tracker .
+
+5.2 Run the Container
+Run the container from the image you just built.
+
+podman run -d --name sales-app --restart=always sales-tracker
+
+-d: Runs the container in detached mode (in the background).
+
+--name sales-app: Gives your running container a memorable name.
+
+--restart=always: Ensures the container starts automatically on boot.
+
+sales-tracker: The name of the image to use.
+
+5.3 Verify the Container is Running
+You can check the status of your container with:
+
+podman ps
+
+To see the server logs, use:
+
+podman logs sales-app
+
+Part 6: Final Connection and First-Time Use
+This is the final step to connect your browser to the app running inside the container.
+
+6.1 Authorize Localhost Domains in Firebase
+Go to your Firebase Console > Authentication > Settings tab.
+
+Under Authorized domains, add both localhost and 12.0.0.1.
+
+6.2 Get and Add Your Firebase Config
+In your Firebase Project Settings, find your firebaseConfig keys for your web app.
+
+On your macOS, open a web browser and navigate to: http://localhost:8080/tracker.html
+
+The app should load. Click the settings icon (⚙️) in the top-right.
+
+Carefully copy and paste the keys from your firebaseConfig into the corresponding fields in the app's settings form.
+
+Click "Save & Connect".
+
+The application will reload, and you can now log in. Your entire server environment is now running neatly inside a Podman container.
