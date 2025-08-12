@@ -326,6 +326,11 @@ You can check the status of your service at any time.
 
 2.  If there are any errors, you can view the logs for your service by running:
 
+-----
+```
+podman stop sales-app && podman rm sales-app && podman build -t sales-tracker . && podman run -d -p 8081:8080 --name sales-app --restart=always sales-tracker
+```
+
     ```bash
     journalctl -u sales-tracker.service
     ```
