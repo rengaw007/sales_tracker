@@ -326,13 +326,14 @@ You can check the status of your service at any time.
 
 2.  If there are any errors, you can view the logs for your service by running:
 
------
-```
-podman stop sales-app && podman rm sales-app && podman build -t sales-tracker . && podman run -d -p 8081:8080 --name sales-app --restart=always sales-tracker
-```
-
     ```bash
     journalctl -u sales-tracker.service
     ```
 
 That's it\! Your `http-server` will now start automatically every time you turn on your Ubuntu VM. You can access it from your Mac's browser at `http://localhost:8080/sales_tracker.html` as long as your port forwarding is set up correctly.
+
+-------
+
+```
+podman stop sales-app && podman rm sales-app && podman build -t sales-tracker . && podman run -d -p 8081:8080 --name sales-app --restart=always sales-tracker
+```
