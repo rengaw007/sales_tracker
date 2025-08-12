@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales & KPI Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .modal { transition: opacity 0.3s ease, visibility 0.3s ease; }
+        .modal-content { transition: transform 0.3s ease; }
+        .tab-btn {
+            color: #6b7280;
+            border-bottom: 2px solid transparent;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .tab-btn.active {
+            border-bottom-color: #3b82f6;
+            color: #3b82f6;
+        }
+        @media print {
+            body * { visibility: hidden; }
+            .printable-section, .printable-section * { visibility: visible; }
+            .printable-section { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+            .no-print { display: none; }
+            .print-only { display: block !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="mb-6 flex justify-between items-center no-print">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Sales & KPI Tracker</h1>
+                <p class="text-gray-600 mt-1">Your portable performance dashboard.</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="auth-container">
+                    <button id="login-btn" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                        <i class="fab fa-google"></i>
+                        <span>Login with Google</span>
+                    </button>
+                </div>
+                <div id="user-info" class="hidden items-center gap-3">
+                    <span id="user-email" class="text-sm text-gray-600 hidden sm:inline"></span>
+                    <button id="logout-btn" class="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+                <button id="settings-btn" class="px-3 py-2 text-gray-600 hover:bg-gray-200 rounded-lg">
+                    <i class="fas fa-cog fa-lg"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Login Prompt -->
+        <div id="login-prompt" class="text-center py-16 bg-white rounded-xl shadow-md">
+            <h2 class="text-xl font-semibold text-gray-800">Welcome!</h2>
+            <p class="text-gray-500 mt-2">Please log in to manage your opportunities and KPIs.</p>
+            <p class="text-sm text-gray-400 mt-4">If you haven't configured your Firebase project, use the settings icon <i class="fas fa-cog"></i>.</p>
+        </div>
+
+        <!-- Main App Content (Hidden by default) -->
+        <div id="app-content" class="hidden">
+            <!-- Tabs -->
+            <div class="border-b border-gray-200 no-print">
+                <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                    <button id="tab-opps" class="tab-btn active whitespace-nowrap py-4 px-1 font-medium text-sm">Opportunity Tracker</button>
+                    <button id="tab-kpis" class="tab-btn whitespace-nowrap py-4 px-1 font-medium text-sm">KPI Tracker</button>
+                </nav>
+            </div>
+
+            <!-- Opportunity Tracker Content -->
+            <div id="opps-content">
+                <!-- New Dashboard -->
+                <div id="opps-dashboard" class="grid grid-cols-1 md:grid-cols-3 gap-6 my-8 no-print">
+                    <div class="space-y-6">
+                        <div class="bg-white p-6 rounded-xl shadow-md flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Total Opportunities</p>
+                                <p id="total-opportunities" class="text-3xl font-bold text-gray-900">0</p>
+                            </div>
+                            <div class="bg-blue-100 text-blue-600 p-3 rounded-full"><i class="fas fa-bullseye fa-lg"></i></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-md">
+                            <p class="text-sm font-medium text-gray-500 mb-2">Filter Period</p>
+                             <div class="flex gap-4">
+                                <div class="w-1/2">
+                                    <label for="opp-filter-quarter" class="sr-only">Quarter</label>
+                                    <select id="opp-filter-quarter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                        <option value="all">All Quarters</option><option value="Q1">Q1</option><option value="Q2">Q2</option><option value="Q3">Q3</option><option value="Q4">Q4</option>
+                                    </select>
+                                </div>
+                                <div class="w-1/2">
+                                    <label for="opp-filter-year" class="sr-only">Year</label>
+                                    <select id="opp-filter-year" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                        <option value="all">All Years</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="status-breakdown" class="bg-white p-6 rounded-xl shadow-md md:col-span-2">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Value by Status</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
+                            <div><p class="text-sm text-gray-500">Discover</p><p id="value-discover" class="text-xl font-bold">$0</p></div>
+                            <div><p class="text-sm text-gray-500">Validate</p><p id="value-validate" class="text-xl font-bold">$0</p></div>
+                            <div><p class="text-sm text-gray-500">Propose</p><p id="value-propose" class="text-xl font-bold">$0</p></div>
+                            <div><p class="text-sm text-gray-500">Negotiate</p><p id="value-negotiate" class="text-xl font-bold">$0</p></div>
+                            <div class="text-green-600"><p class="text-sm font-medium">Closed Win</p><p id="value-closed-win" class="text-xl font-bold">$0</p></div>
+                            <div class="text-red-600"><p class="text-sm font-medium">Closed Lost</p><p id="value-closed-lost" class="text-xl font-bold">$0</p></div>
+                            <div><p class="text-sm text-gray-500">Customized</p><p id="value-customized" class="text-xl font-bold">$0</p></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Main Content -->
+                <div class="bg-white rounded-xl shadow-md">
+                    <div class="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4 no-print">
+                        <div class="relative w-full sm:w-1/2 md:w-1/3">
+                            <input type="text" id="search-input-opps" class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Search Opportunities...">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                        <div class="flex items-center gap-4 w-full sm:w-auto">
+                             <button id="print-button-opps" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                                <i class="fas fa-print"></i><span>Print Report</span>
+                            </button>
+                            <button id="add-opportunity-btn" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700">
+                                <i class="fas fa-plus"></i><span>New Opportunity</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="print-section-opps" class="printable-section">
+                        <div class="p-6 hidden print-only">
+                            <h2 class="text-xl font-bold text-center">Opportunities Report</h2>
+                            <div id="print-status-breakdown" class="mt-4 text-xs">
+                                <!-- Printable breakdown will be injected here -->
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sr No.</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Opp. No.</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deal Size</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider no-print">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="opportunities-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI Tracker Content (Hidden by default) -->
+            <div id="kpis-content" class="hidden">
+                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-8 no-print">
+                    <div class="bg-white p-6 rounded-xl shadow-md flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Overall Achievement</p>
+                            <p id="overall-kpi-percentage" class="text-3xl font-bold text-gray-900">0%</p>
+                        </div>
+                        <div class="bg-green-100 text-green-600 p-3 rounded-full"><i class="fas fa-chart-line fa-lg"></i></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md col-span-2 flex flex-col justify-center">
+                        <p class="text-sm font-medium text-gray-500 mb-2">Filter Period</p>
+                         <div class="flex gap-4">
+                            <div class="w-1/2">
+                                <label for="kpi-filter-quarter" class="sr-only">Filter Quarter</label>
+                                <select id="kpi-filter-quarter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="all">All Quarters</option><option value="Q1">Q1</option><option value="Q2">Q2</option><option value="Q3">Q3</option><option value="Q4">Q4</option>
+                                </select>
+                            </div>
+                            <div class="w-1/2">
+                                <label for="kpi-filter-year" class="sr-only">Filter Year</label>
+                                <select id="kpi-filter-year" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="all">All Years</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                 <div class="bg-white rounded-xl shadow-md">
+                    <div class="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-end items-center gap-4 no-print">
+                        <div class="flex items-center gap-4 w-full sm:w-auto">
+                             <button id="print-button-kpis" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                                <i class="fas fa-print"></i><span>Print Report</span>
+                            </button>
+                            <button id="add-kpi-btn" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700">
+                                <i class="fas fa-plus"></i><span>New KPI</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="print-section-kpis" class="printable-section">
+                        <div class="p-6 hidden print-only">
+                            <h2 class="text-xl font-bold text-center">KPI Report</h2>
+                            <div class="mt-4 text-center">
+                                <span class="text-sm font-medium text-gray-500">Overall Achievement for Period: </span>
+                                <span id="print-overall-kpi-percentage" class="text-lg font-bold text-gray-900">0%</span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KPI / Task</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target Period</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Achievement</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider no-print">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="kpis-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="opportunity-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 invisible opacity-0 no-print">
+        <div class="modal-content bg-white rounded-xl shadow-2xl w-full max-w-3xl transform scale-95">
+            <form id="opportunity-form" class="p-8">
+                <h2 id="modal-title" class="text-2xl font-bold text-gray-900 mb-6">New Opportunity</h2>
+                <input type="hidden" id="opportunity-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="companyName" class="block text-sm font-medium text-gray-700">Company Name</label>
+                        <input type="text" id="companyName" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                    </div>
+                    <div>
+                        <label for="opportunityNo" class="block text-sm font-medium text-gray-700">Opportunity No.</label>
+                        <input type="text" id="opportunityNo" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                    </div>
+                    <div>
+                        <label for="salesTeam1" class="block text-sm font-medium text-gray-700">Sales Team 1</label>
+                        <input type="text" id="salesTeam1" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="salesTeam2" class="block text-sm font-medium text-gray-700">Sales Team 2</label>
+                        <input type="text" id="salesTeam2" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="solutionArchitect1" class="block text-sm font-medium text-gray-700">Solution Architect 1</label>
+                        <input type="text" id="solutionArchitect1" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                     <div>
+                        <label for="solutionArchitect2" class="block text-sm font-medium text-gray-700">Solution Architect 2</label>
+                        <input type="text" id="solutionArchitect2" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="products" class="block text-sm font-medium text-gray-700">Products</label>
+                        <input type="text" id="products" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="link" class="block text-sm font-medium text-gray-700">Link</label>
+                        <input type="url" id="link" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="dealSize" class="block text-sm font-medium text-gray-700">Deal Size ($)</label>
+                        <input type="number" id="dealSize" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="w-1/2">
+                            <label for="quarter" class="block text-sm font-medium text-gray-700">Quarter</label>
+                            <select id="quarter" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                                <option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option>
+                            </select>
+                        </div>
+                        <div class="w-1/2">
+                            <label for="year" class="block text-sm font-medium text-gray-700">Year</label>
+                            <input type="number" id="year" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                        <select id="status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                            <option>Discover</option>
+                            <option>Validate</option>
+                            <option>Propose</option>
+                            <option>Negotiate</option>
+                            <option>Closed Lost</option>
+                            <option>Closed Win</option>
+                            <option>Customized</option>
+                        </select>
+                    </div>
+                     <div>
+                        <label for="requestDate" class="block text-sm font-medium text-gray-700">Request Date</label>
+                        <input type="date" id="requestDate" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="taskDate" class="block text-sm font-medium text-gray-700">Task Date</label>
+                        <input type="date" id="taskDate" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="meetingDate" class="block text-sm font-medium text-gray-700">Meeting Date</label>
+                        <input type="date" id="meetingDate" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="comments" class="block text-sm font-medium text-gray-700">Comments</label>
+                        <textarea id="comments" rows="4" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></textarea>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4 mt-8">
+                    <button type="button" id="cancel-btn" class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="kpi-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 invisible opacity-0 no-print">
+        <div class="modal-content bg-white rounded-xl shadow-2xl w-full max-w-lg transform scale-95">
+            <form id="kpi-form" class="p-8">
+                <h2 id="kpi-modal-title" class="text-2xl font-bold text-gray-900 mb-6">New KPI</h2>
+                <input type="hidden" id="kpi-id">
+                <div class="space-y-6">
+                    <div>
+                        <label for="kpi-description" class="block text-sm font-medium text-gray-700">KPI / Task Description</label>
+                        <textarea id="kpi-description" rows="4" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required></textarea>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="w-1/2">
+                            <label for="kpi-quarter" class="block text-sm font-medium text-gray-700">Target Quarter</label>
+                            <select id="kpi-quarter" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                                <option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option>
+                            </select>
+                        </div>
+                        <div class="w-1/2">
+                            <label for="kpi-year" class="block text-sm font-medium text-gray-700">Target Year</label>
+                            <input type="number" id="kpi-year" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="w-1/2">
+                            <label for="kpi-status" class="block text-sm font-medium text-gray-700">Status</label>
+                            <select id="kpi-status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                                <option>To Do</option><option>In Progress</option><option>Completed</option><option>Blocked</option>
+                            </select>
+                        </div>
+                        <div class="w-1/2">
+                             <label for="kpi-percentage" class="block text-sm font-medium text-gray-700">Achievement %</label>
+                            <input type="number" id="kpi-percentage" min="0" max="100" step="1" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4 mt-8">
+                    <button type="button" id="kpi-cancel-btn" class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700">Save KPI</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 invisible opacity-0 no-print">
+        <div class="modal-content bg-white rounded-xl shadow-2xl w-full max-w-sm transform scale-95">
+            <div class="p-6 text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100"><i class="fas fa-exclamation-triangle text-red-600 fa-lg"></i></div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4" id="confirm-title">Delete Item</h3>
+                <div class="mt-2"><p class="text-sm text-gray-500" id="confirm-message">Are you sure?</p></div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse rounded-b-xl">
+                <button type="button" id="confirm-ok-btn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 sm:ml-3 sm:w-auto sm:text-sm">Delete</button>
+                <button type="button" id="confirm-cancel-btn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="settings-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 invisible opacity-0 no-print">
+        <div class="modal-content bg-white rounded-xl shadow-2xl w-full max-w-lg transform scale-95">
+            <form id="settings-form" class="p-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Firebase Configuration</h2>
+                <div class="space-y-4">
+                    <div><label for="apiKey" class="block text-sm font-medium">API Key</label><input type="text" id="apiKey" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required></div>
+                    <div><label for="authDomain" class="block text-sm font-medium">Auth Domain</label><input type="text" id="authDomain" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required></div>
+                    <div><label for="projectId" class="block text-sm font-medium">Project ID</label><input type="text" id="projectId" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required></div>
+                    <div><label for="storageBucket" class="block text-sm font-medium">Storage Bucket</label><input type="text" id="storageBucket" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
+                    <div><label for="messagingSenderId" class="block text-sm font-medium">Messaging Sender ID</label><input type="text" id="messagingSenderId" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
+                    <div><label for="appId" class="block text-sm font-medium">App ID</label><input type="text" id="appId" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
+                </div>
+                <div class="flex justify-end gap-4 mt-8">
+                    <button type="button" id="settings-cancel-btn" class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700">Save & Connect</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // --- Global State ---
+        let firebaseApp, db, auth;
+        let opportunitiesCollection, kpisCollection;
+        let allOpportunities = [], allKpis = [];
+        let oppsUnsubscribe, kpisUnsubscribe;
+        let resolveConfirm;
+
+        // --- DOM Elements ---
+        const loginPrompt = document.getElementById('login-prompt');
+        const appContent = document.getElementById('app-content');
+        const tabOpps = document.getElementById('tab-opps');
+        const tabKpis = document.getElementById('tab-kpis');
+        const oppsContent = document.getElementById('opps-content');
+        const kpisContent = document.getElementById('kpis-content');
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const authContainer = document.getElementById('auth-container');
+        const userInfo = document.getElementById('user-info');
+        const userEmailEl = document.getElementById('user-email');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+        const settingsForm = document.getElementById('settings-form');
+        const settingsCancelBtn = document.getElementById('settings-cancel-btn');
+        const opportunitiesTableBody = document.getElementById('opportunities-table-body');
+        const addOpportunityBtn = document.getElementById('add-opportunity-btn');
+        const oppFilterQuarter = document.getElementById('opp-filter-quarter');
+        const oppFilterYear = document.getElementById('opp-filter-year');
+        const searchInputOpps = document.getElementById('search-input-opps');
+        const printButtonOpps = document.getElementById('print-button-opps');
+        const opportunityForm = document.getElementById('opportunity-form');
+        const opportunityModal = document.getElementById('opportunity-modal');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const addKpiBtn = document.getElementById('add-kpi-btn');
+        const kpiModal = document.getElementById('kpi-modal');
+        const kpiForm = document.getElementById('kpi-form');
+        const kpiCancelBtn = document.getElementById('kpi-cancel-btn');
+        const kpisTableBody = document.getElementById('kpis-table-body');
+        const kpiFilterYear = document.getElementById('kpi-filter-year');
+        const kpiFilterQuarter = document.getElementById('kpi-filter-quarter');
+        const printButtonKpis = document.getElementById('print-button-kpis');
+        const overallKpiPercentageEl = document.getElementById('overall-kpi-percentage');
+        const printOverallKpiPercentageEl = document.getElementById('print-overall-kpi-percentage');
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmOkBtn = document.getElementById('confirm-ok-btn');
+        const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+
+        // --- Utility Functions ---
+        const openModal = (modalEl) => modalEl.classList.remove('invisible', 'opacity-0');
+        const closeModal = (modalEl) => modalEl.classList.add('invisible', 'opacity-0');
+        const showConfirm = (title, message) => {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            openModal(confirmModal);
+            return new Promise(resolve => { resolveConfirm = resolve; });
+        };
+
+        // --- App Initialization & Firebase Setup ---
+        function initApp() {
+            const savedConfig = localStorage.getItem('firebaseConfig');
+            if (savedConfig) {
+                initializeFirebase(JSON.parse(savedConfig));
+            } else {
+                openModal(settingsModal);
+            }
+        }
+
+        function initializeFirebase(config) {
+            try {
+                firebaseApp = initializeApp(config);
+                db = getFirestore(firebaseApp);
+                auth = getAuth(firebaseApp);
+                setupAuthListener();
+            } catch (error) {
+                alert("Failed to initialize Firebase. Check your configuration.");
+            }
+        }
+
+        settingsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const config = {
+                apiKey: document.getElementById('apiKey').value,
+                authDomain: document.getElementById('authDomain').value,
+                projectId: document.getElementById('projectId').value,
+                storageBucket: document.getElementById('storageBucket').value,
+                messagingSenderId: document.getElementById('messagingSenderId').value,
+                appId: document.getElementById('appId').value,
+            };
+            localStorage.setItem('firebaseConfig', JSON.stringify(config));
+            closeModal(settingsModal);
+            location.reload();
+        });
+        settingsBtn.addEventListener('click', () => {
+            const configStr = localStorage.getItem('firebaseConfig');
+            if(configStr) {
+                const config = JSON.parse(configStr);
+                Object.keys(config).forEach(key => {
+                    const el = document.getElementById(key);
+                    if (el) el.value = config[key];
+                });
+            }
+            openModal(settingsModal);
+        });
+        settingsCancelBtn.addEventListener('click', () => closeModal(settingsModal));
+
+        // --- Authentication Logic ---
+        function setupAuthListener() {
+            onAuthStateChanged(auth, user => {
+                if (user) {
+                    appContent.classList.remove('hidden');
+                    loginPrompt.classList.add('hidden');
+                    userInfo.classList.remove('hidden');
+                    userInfo.classList.add('flex');
+                    authContainer.classList.add('hidden');
+                    userEmailEl.textContent = user.email;
+                    opportunitiesCollection = collection(db, `users/${user.uid}/opportunities`);
+                    kpisCollection = collection(db, `users/${user.uid}/kpis`);
+                    loadOpportunities();
+                    loadKpis();
+                } else {
+                    appContent.classList.add('hidden');
+                    loginPrompt.classList.remove('hidden');
+                    userInfo.classList.add('hidden');
+                    authContainer.classList.remove('hidden');
+                    if (oppsUnsubscribe) oppsUnsubscribe();
+                    if (kpisUnsubscribe) kpisUnsubscribe();
+                }
+            });
+        }
+        loginBtn.addEventListener('click', () => {
+            if (!auth) { alert("Please configure Firebase settings first."); return; }
+            signInWithPopup(auth, new GoogleAuthProvider()).catch(error => alert(`Login failed: ${error.message}`));
+        });
+        logoutBtn.addEventListener('click', () => signOut(auth));
+        
+        // --- Tab Switching ---
+        function switchTab(tab) {
+            const isActive = 'active';
+            const isHidden = 'hidden';
+            if (tab === 'opps') {
+                tabOpps.classList.add(isActive);
+                tabKpis.classList.remove(isActive);
+                oppsContent.classList.remove(isHidden);
+                kpisContent.classList.add(isHidden);
+            } else {
+                tabKpis.classList.add(isActive);
+                tabOpps.classList.remove(isActive);
+                kpisContent.classList.remove(isHidden);
+                oppsContent.classList.add(isHidden);
+            }
+        }
+        tabOpps.addEventListener('click', () => switchTab('opps'));
+        tabKpis.addEventListener('click', () => switchTab('kpis'));
+
+        // --- Opportunity Tracker Logic ---
+        function loadOpportunities() {
+            if (oppsUnsubscribe) oppsUnsubscribe();
+            if (!opportunitiesCollection) return;
+            oppsUnsubscribe = onSnapshot(opportunitiesCollection, (snapshot) => {
+                allOpportunities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                populateOppYearFilter();
+                filterAndRenderOpps();
+            });
+        }
+        function populateOppYearFilter() {
+            const years = [...new Set(allOpportunities.map(opp => opp.year))].sort((a, b) => b - a);
+            const currentYearSelection = oppFilterYear.value;
+            oppFilterYear.innerHTML = '<option value="all">All</option>';
+            years.forEach(year => oppFilterYear.innerHTML += `<option value="${year}">${year}</option>`);
+            if (years.includes(parseInt(currentYearSelection))) oppFilterYear.value = currentYearSelection;
+        }
+        function filterAndRenderOpps() {
+            const searchTerm = searchInputOpps.value.toLowerCase();
+            const selectedQuarter = oppFilterQuarter.value;
+            const selectedYear = oppFilterYear.value;
+            let filtered = allOpportunities;
+            if (selectedYear !== 'all') filtered = filtered.filter(opp => opp.year == selectedYear);
+            if (selectedQuarter !== 'all') filtered = filtered.filter(opp => opp.quarter === selectedQuarter);
+            if (searchTerm) filtered = filtered.filter(opp => (opp.companyName?.toLowerCase().includes(searchTerm) || opp.opportunityNo?.toLowerCase().includes(searchTerm)));
+            renderOppTable(filtered);
+            updateOppDashboard(allOpportunities);
+        }
+        function updateOppDashboard(opportunities) {
+            const selectedQuarter = oppFilterQuarter.value;
+            const selectedYear = oppFilterYear.value;
+            let filtered = opportunities;
+            if (selectedYear !== 'all') filtered = filtered.filter(opp => opp.year == selectedYear);
+            if (selectedQuarter !== 'all') filtered = filtered.filter(opp => opp.quarter === selectedQuarter);
+            
+            document.getElementById('total-opportunities').textContent = filtered.length;
+
+            const statuses = ['Discover', 'Validate', 'Propose', 'Negotiate', 'Closed Win', 'Closed Lost', 'Customized'];
+            let printBreakdownHTML = '<div class="grid grid-cols-3 gap-4">';
+
+            statuses.forEach(status => {
+                const statusOpps = filtered.filter(opp => opp.status === status);
+                const totalValue = statusOpps.reduce((sum, opp) => sum + (parseFloat(opp.dealSize) || 0), 0);
+                const formattedValue = `$${totalValue.toLocaleString()}`;
+                
+                const elementId = `value-${status.toLowerCase().replace(/\s+/g, '-')}`;
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.textContent = formattedValue;
+                }
+                printBreakdownHTML += `<div><span class="font-semibold">${status}:</span> ${formattedValue}</div>`;
+            });
+            
+            printBreakdownHTML += '</div>';
+            document.getElementById('print-status-breakdown').innerHTML = printBreakdownHTML;
+        }
+        function renderOppTable(opportunities) {
+            opportunitiesTableBody.innerHTML = '';
+            if (opportunities.length === 0) {
+                opportunitiesTableBody.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-gray-500">No opportunities found.</td></tr>`;
+                return;
+            }
+            opportunities.forEach((opp, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index + 1}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">${opp.companyName}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${opp.opportunityNo}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${getStatusBadge(opp.status)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$${Number(opp.dealSize || 0).toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${opp.quarter} ${opp.year}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium no-print">
+                        <button class="text-blue-600 hover:text-blue-900 mr-4 edit-opp-btn" data-id="${opp.id}">Edit</button>
+                        <button class="text-red-600 hover:text-red-900 delete-opp-btn" data-id="${opp.id}">Delete</button>
+                    </td>`;
+                opportunitiesTableBody.appendChild(row);
+            });
+        }
+        const getStatusBadge = (status) => {
+            const base = "px-2 inline-flex text-xs leading-5 font-semibold rounded-full";
+            switch (status) {
+                case 'Discover': return `<span class="${base} bg-blue-100 text-blue-800">Discover</span>`;
+                case 'Validate': return `<span class="${base} bg-cyan-100 text-cyan-800">Validate</span>`;
+                case 'Propose': return `<span class="${base} bg-indigo-100 text-indigo-800">Propose</span>`;
+                case 'Negotiate': return `<span class="${base} bg-yellow-100 text-yellow-800">Negotiate</span>`;
+                case 'Closed Win': return `<span class="${base} bg-green-100 text-green-800">Closed Win</span>`;
+                case 'Closed Lost': return `<span class="${base} bg-red-100 text-red-800">Closed Lost</span>`;
+                default: return `<span class="${base} bg-gray-100 text-gray-800">Customized</span>`;
+            }
+        };
+        addOpportunityBtn.addEventListener('click', () => {
+            opportunityForm.reset();
+            document.getElementById('year').value = new Date().getFullYear();
+            document.getElementById('opportunity-id').value = '';
+            document.getElementById('modal-title').textContent = 'New Opportunity';
+            openModal(opportunityModal);
+        });
+        cancelBtn.addEventListener('click', () => closeModal(opportunityModal));
+        opportunityForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('opportunity-id').value;
+            const oppNo = document.getElementById('opportunityNo').value.trim();
+            if (!id && allOpportunities.some(opp => opp.opportunityNo === oppNo)) {
+                alert(`Error: Opportunity number "${oppNo}" already exists.`);
+                return;
+            }
+            const oppData = {
+                companyName: document.getElementById('companyName').value,
+                opportunityNo: oppNo,
+                salesTeam1: document.getElementById('salesTeam1').value,
+                salesTeam2: document.getElementById('salesTeam2').value,
+                solutionArchitect1: document.getElementById('solutionArchitect1').value,
+                solutionArchitect2: document.getElementById('solutionArchitect2').value,
+                products: document.getElementById('products').value,
+                link: document.getElementById('link').value,
+                dealSize: document.getElementById('dealSize').value,
+                quarter: document.getElementById('quarter').value,
+                year: document.getElementById('year').value,
+                status: document.getElementById('status').value,
+                requestDate: document.getElementById('requestDate').value,
+                taskDate: document.getElementById('taskDate').value,
+                meetingDate: document.getElementById('meetingDate').value,
+                comments: document.getElementById('comments').value,
+            };
+            try {
+                if (id) await updateDoc(doc(opportunitiesCollection, id), oppData);
+                else await addDoc(opportunitiesCollection, oppData);
+                closeModal(opportunityModal);
+            } catch (error) { alert("Error saving opportunity."); }
+        });
+        opportunitiesTableBody.addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            if (e.target.classList.contains('edit-opp-btn')) {
+                const opp = allOpportunities.find(o => o.id === id);
+                if (opp) {
+                    document.getElementById('modal-title').textContent = 'Edit Opportunity';
+                    Object.keys(opp).forEach(key => {
+                        const el = document.getElementById(key);
+                        if (el) el.value = opp[key] || '';
+                    });
+                    document.getElementById('opportunity-id').value = opp.id;
+                    openModal(opportunityModal);
+                }
+            } else if (e.target.classList.contains('delete-opp-btn')) {
+                if (await showConfirm('Delete Opportunity', 'Are you sure you want to delete this opportunity?')) {
+                    await deleteDoc(doc(opportunitiesCollection, id));
+                }
+            }
+        });
+        oppFilterQuarter.addEventListener('change', filterAndRenderOpps);
+        oppFilterYear.addEventListener('change', filterAndRenderOpps);
+        searchInputOpps.addEventListener('input', filterAndRenderOpps);
+        printButtonOpps.addEventListener('click', () => window.print());
+
+        // --- KPI Tracker Logic ---
+        function loadKpis() {
+            if (kpisUnsubscribe) kpisUnsubscribe();
+            if (!kpisCollection) return;
+            kpisUnsubscribe = onSnapshot(kpisCollection, (snapshot) => {
+                allKpis = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                populateKpiYearFilter();
+                filterAndRenderKpis();
+            });
+        }
+        function populateKpiYearFilter() {
+            const years = [...new Set(allKpis.map(kpi => kpi.year))].sort((a, b) => b - a);
+            const currentYearSelection = kpiFilterYear.value;
+            kpiFilterYear.innerHTML = '<option value="all">All Years</option>';
+            years.forEach(year => kpiFilterYear.innerHTML += `<option value="${year}">${year}</option>`);
+            if (years.includes(parseInt(currentYearSelection))) kpiFilterYear.value = currentYearSelection;
+        }
+        function filterAndRenderKpis() {
+            const selectedYear = kpiFilterYear.value;
+            const selectedQuarter = kpiFilterQuarter.value;
+            let filtered = allKpis;
+            if (selectedYear !== 'all') filtered = filtered.filter(kpi => kpi.year == selectedYear);
+            if (selectedQuarter !== 'all') filtered = filtered.filter(kpi => kpi.quarter === selectedQuarter);
+            renderKpiTable(filtered);
+            updateOverallKpiDisplay(filtered);
+        }
+        function updateOverallKpiDisplay(kpis) {
+            if (kpis.length === 0) {
+                overallKpiPercentageEl.textContent = "N/A";
+                printOverallKpiPercentageEl.textContent = "N/A";
+                return;
+            }
+            const totalPercentage = kpis.reduce((sum, kpi) => sum + (parseFloat(kpi.percentage) || 0), 0);
+            const average = totalPercentage / kpis.length;
+            const displayText = `${Math.round(average)}%`;
+            overallKpiPercentageEl.textContent = displayText;
+            printOverallKpiPercentageEl.textContent = displayText;
+        }
+        function renderKpiTable(kpis) {
+            kpisTableBody.innerHTML = '';
+            if (kpis.length === 0) {
+                kpisTableBody.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-gray-500">No KPIs found for this period.</td></tr>`;
+                return;
+            }
+            kpis.forEach(kpi => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-pre-wrap text-sm text-gray-800">${kpi.description}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${kpi.quarter} ${kpi.year}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">${getKpiStatusBadge(kpi.status)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800">${kpi.percentage || 0}%</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right no-print">
+                        <button class="text-blue-600 hover:text-blue-900 mr-4 edit-kpi-btn" data-id="${kpi.id}">Edit</button>
+                        <button class="text-red-600 hover:text-red-900 delete-kpi-btn" data-id="${kpi.id}">Delete</button>
+                    </td>`;
+                kpisTableBody.appendChild(row);
+            });
+        }
+        const getKpiStatusBadge = (status) => {
+            const base = "px-2 inline-flex text-xs leading-5 font-semibold rounded-full";
+            switch (status) {
+                case 'Completed': return `<span class="${base} bg-green-100 text-green-800">Completed</span>`;
+                case 'In Progress': return `<span class="${base} bg-yellow-100 text-yellow-800">In Progress</span>`;
+                case 'Blocked': return `<span class="${base} bg-red-100 text-red-800">Blocked</span>`;
+                default: return `<span class="${base} bg-gray-100 text-gray-800">To Do</span>`;
+            }
+        };
+        addKpiBtn.addEventListener('click', () => {
+            kpiForm.reset();
+            document.getElementById('kpi-year').value = new Date().getFullYear();
+            document.getElementById('kpi-percentage').value = 0;
+            document.getElementById('kpi-id').value = '';
+            document.getElementById('kpi-modal-title').textContent = 'New KPI';
+            openModal(kpiModal);
+        });
+        kpiCancelBtn.addEventListener('click', () => closeModal(kpiModal));
+        kpiForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('kpi-id').value;
+            const kpiData = {
+                description: document.getElementById('kpi-description').value,
+                quarter: document.getElementById('kpi-quarter').value,
+                year: document.getElementById('kpi-year').value,
+                status: document.getElementById('kpi-status').value,
+                percentage: document.getElementById('kpi-percentage').value,
+            };
+            try {
+                if (id) await updateDoc(doc(kpisCollection, id), kpiData);
+                else await addDoc(kpisCollection, kpiData);
+                closeModal(kpiModal);
+            } catch (error) { alert("Error saving KPI."); }
+        });
+        kpisTableBody.addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            if (e.target.classList.contains('edit-kpi-btn')) {
+                const kpi = allKpis.find(k => k.id === id);
+                if (kpi) {
+                    document.getElementById('kpi-id').value = kpi.id;
+                    document.getElementById('kpi-description').value = kpi.description;
+                    document.getElementById('kpi-quarter').value = kpi.quarter;
+                    document.getElementById('kpi-year').value = kpi.year;
+                    document.getElementById('kpi-status').value = kpi.status;
+                    document.getElementById('kpi-percentage').value = kpi.percentage || 0;
+                    document.getElementById('kpi-modal-title').textContent = 'Edit KPI';
+                    openModal(kpiModal);
+                }
+            } else if (e.target.classList.contains('delete-kpi-btn')) {
+                if (await showConfirm('Delete KPI', 'Are you sure you want to delete this KPI?')) {
+                    await deleteDoc(doc(kpisCollection, id));
+                }
+            }
+        });
+        kpiFilterYear.addEventListener('change', filterAndRenderKpis);
+        kpiFilterQuarter.addEventListener('change', filterAndRenderKpis);
+        printButtonKpis.addEventListener('click', () => window.print());
+
+        // --- Confirmation Modal Logic ---
+        confirmOkBtn.addEventListener('click', () => { closeModal(confirmModal); if (resolveConfirm) resolveConfirm(true); });
+        confirmCancelBtn.addEventListener('click', () => { closeModal(confirmModal); if (resolveConfirm) resolveConfirm(false); });
+
+        // --- Initial Load ---
+        initApp();
+    </script>
+</body>
+</html>
