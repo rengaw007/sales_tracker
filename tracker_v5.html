@@ -448,8 +448,14 @@
         const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
 
         // --- Utility Functions ---
-        const openModal = (modalEl) => modalEl.classList.remove('invisible', 'opacity-0');
-        const closeModal = (modalEl) => modalEl.classList.add('invisible', 'opacity-0');
+        const openModal = (modalEl) => {
+            modalEl.classList.remove('invisible', 'opacity-0');
+            modalEl.querySelector('.modal-content')?.classList.remove('scale-95');
+        };
+        const closeModal = (modalEl) => {
+            modalEl.classList.add('invisible', 'opacity-0');
+            modalEl.querySelector('.modal-content')?.classList.add('scale-95');
+        };
         const showConfirm = (title, message) => {
             document.getElementById('confirm-title').textContent = title;
             document.getElementById('confirm-message').textContent = message;
